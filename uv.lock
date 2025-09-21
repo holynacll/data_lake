@@ -50,6 +50,7 @@ name = "app"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "altair" },
     { name = "fastapi", extra = ["standard"] },
     { name = "pandas" },
     { name = "pydantic-settings" },
@@ -64,6 +65,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "altair", specifier = ">=5.5.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.116.1" },
     { name = "pandas", specifier = ">=2.3.2" },
     { name = "pydantic-settings", specifier = ">=2.10.1" },

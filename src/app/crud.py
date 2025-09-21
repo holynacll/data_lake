@@ -20,9 +20,11 @@ def create_item(db: Session, item: schemas.ItemCreate):
     return db_item
 
 
-def get_items_by_date(db: Session, start_date: datetime, end_date: datetime):
+def get_items_by_date(db: Session, start_date: datetime, end_date: datetime, operation_types: list[str] = ["MANUAL_VALIDATION", "AUTOMATIC_VALIDATION"]):
     return (
-        db.query(models.ItemModel)
-        .filter(models.ItemModel.created_at.between(start_date, end_date))
+        db.query(models.ItemModel).filter(
+            models.ItemModel.created_at.between(start_date, end_date),
+            models.ItemModel.operation_type.in_(operation_types)
+        )
         .all()
     )
