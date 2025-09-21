@@ -162,6 +162,10 @@ else:
     with col1_pie:
         validation_counts = df['Validação Manual'].value_counts().reset_index()
         validation_counts.columns = ['Tipo de Validação', 'Contagem']
+        validation_counts['Tipo de Validação'] = validation_counts['Tipo de Validação'].map(
+            {'Sim': 'Manual', 'Não': 'Automática'}
+        )
+
 
         pie_chart_validation = alt.Chart(validation_counts).mark_arc(outerRadius=120).encode(
             theta=alt.Theta("Contagem:Q", stack=True),
@@ -207,10 +211,10 @@ else:
     )
 
     # --- Exportação para CSV ---
-    csv = df.to_csv(index=False).encode("utf-8")
-    st.download_button(
-        label="📥 Exportar para CSV",
-        data=csv,
-        file_name=f"descontos_{start_date_input}_a_{end_date_input}.csv",
-        mime="text/csv",
-    )
+    # csv = df.to_csv(index=False).encode("utf-8")
+    # st.download_button(
+    #     label="📥 Exportar para CSV",
+    #     data=csv,
+    #     file_name=f"descontos_{start_date_input}_a_{end_date_input}.csv",
+    #     mime="text/csv",
+    # )
