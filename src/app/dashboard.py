@@ -17,6 +17,35 @@ locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
 MANUAL_VALIDATION = "MANUAL_VALIDATION"
 AUTOMATIC_VALIDATION = "AUTOMATIC_VALIDATION"
 
+
+# Coloque esta função junto com as outras funções auxiliares
+@st.cache_data(ttl=1200)  # Cache de 20 minutos (1200 segundos)
+def fetch_data_from_db(start_date, end_date, operation_types):
+    """
+    Função cacheada para buscar dados do banco de dados.
+    A consulta real ao DB só será executada se o cache expirar ou se os parâmetros mudarem.
+    """
+    types_tuple = tuple(sorted(operation_types)) # Converte a lista para tupla para que seja "hashable" pelo cache
+    with SessionLocal() as db:
+        items = get_items_by_date(db, start_date, end_date, types_tuple) # type: ignore
+        # É importante retornar dados serializáveis (não objetos SQLAlchemy complexos)
+        # Sua conversão para data_list já resolve isso.
+        return [
+            {
+                "Ticket Code": item.ticket_code,
+                "Status": "Sucesso" if item.success else "Falha",
+                "Num Cupom": item.num_cupom,
+                "Num Ped ECF": item.num_ped_ecf,
+                "Valor Total": item.vl_total,
+                "Validação Manual": "Sim" if item.operation_type == MANUAL_VALIDATION else "Não",
+                "Criado em": item.created_at.strftime("%Y/%m/%d"),
+                # "operation_type": item.operation_type, # Adicionei para a conversão ser completa
+                # "success": item.success
+            }
+            for item in items
+        ]
+
+
 # --- Funções Auxiliares com Type Hinting ---
 @st.cache_data(show_spinner="Carregando dados...")
 def load_data(data: list[dict]) -> pd.DataFrame:
@@ -68,24 +97,14 @@ if not operation_types_to_fetch:
     st.stop()
 
 # Use o context manager para a sessão do DB
-with SessionLocal() as db:
-    items = get_items_by_date(db, start_date, end_date, operation_types_to_fetch)
+# with SessionLocal() as db:
+#     items = get_items_by_date(db, start_date, end_date, operation_types_to_fetch)
 
-if not items:
+data_list = fetch_data_from_db(start_date, end_date, operation_types_to_fetch)
+
+if not data_list:
     st.warning("Nenhum dado encontrado para os filtros selecionados.")
 else:
-    data_list = [
-        {
-            "Ticket Code": item.ticket_code,
-            "Num Cupom": item.num_cupom,
-            "Num Ped ECF": item.num_ped_ecf,
-            "Valor Total": item.vl_total,
-            "Validação Manual": "Sim" if item.operation_type == MANUAL_VALIDATION else "Não",
-            "Status": "Sucesso" if item.success else "Falha",
-            "Criado em": item.created_at.strftime("%Y/%m/%d"),
-        }
-        for item in items
-    ]
     df = load_data(data_list)
     df['Data'] = pd.to_datetime(df["Criado em"], format="%Y/%m/%d")
 
