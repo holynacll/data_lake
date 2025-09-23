@@ -10,7 +10,7 @@ class ItemModel(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     ticket_code: Mapped[str] = mapped_column(String(120), index=True)  # Adicionado índice
-    num_ped_ecf: Mapped[int] = mapped_column(Integer, nullable=True, index=True)  # Adicionado índice
+    num_ped_ecf: Mapped[str] = mapped_column(String(60), nullable=True, index=True)  # Adicionado índice
     num_cupom: Mapped[int] = mapped_column(Integer, nullable=True, index=True)  # Adicionado índice
     num_caixa: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
     vl_total: Mapped[float] = mapped_column(Float, index=True)  # Adicionado índice para ordenações por valor
