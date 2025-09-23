@@ -20,10 +20,11 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.6"
 
     # Auth
-    API_KEY: str
+    # API_KEY: str
 
     # Database
-    DATABASE_URL: str = 'sqlite:///db.sqlite3'
+    # DATABASE_URL: str = 'sqlite:///db.sqlite3'
+    DATABASE_URL: str = 'postgresql+psycopg2://postgres:postgres@db:5432/dashboard'
 
 
 class DevelopmentSettings(Settings):

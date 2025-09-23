@@ -7,8 +7,9 @@ class ItemBase(BaseModel):
     operation_type: str
     success: bool
     message: str
-    num_ped_ecf: int | None
-    num_cupom: int | None
+    num_ped_ecf: int | None = None
+    num_cupom: int | None =  None
+    num_caixa: int | None = None
 
 
 class ItemCreate(ItemBase):

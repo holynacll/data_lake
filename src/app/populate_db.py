@@ -1,26 +1,36 @@
 from datetime import datetime, timedelta
+
+from sqlalchemy import insert
 from app import models
-from app.database import SessionLocal
+from app.database import SessionLocal, engine
 from faker import Faker
 
+models.Base.metadata.create_all(bind=engine)
 
-db = SessionLocal()
 fake = Faker()
 
-for _ in range(100):
+items = []
+for _ in range(1000000):
     date_interval = fake.random_int(min=1, max=30)
+    num_caixa_interval = fake.random_int(min=1, max=32)
     item = {
         "ticket_code": fake.uuid4(),
         "num_ped_ecf": fake.random_int(),
         "num_cupom": fake.random_int(),
+        "num_caixa": num_caixa_interval,
         "vl_total": fake.random_int(),
         "operation_type": fake.random_element(elements=("MANUAL_VALIDATION", "AUTOMATIC_VALIDATION")),
-        "success": fake.boolean(),
+        "success": fake.boolean(chance_of_getting_true=95),
         "message": fake.sentence(),
         "created_at": datetime.now() - timedelta(days=date_interval),
         "updated_at": datetime.now() - timedelta(days=date_interval)
     }
-    db_item = models.ItemModel(**item)
-    db.add(db_item)
-db.commit()
-db.close()
+    items.append(item)
+
+chunks = [items[i:i+100] for i in range(0, len(items), 100)]
+
+for chunk in chunks:
+    with SessionLocal() as db:
+        stmt = insert(models.ItemModel).values(chunk)
+        db.execute(stmt)
+        db.commit()

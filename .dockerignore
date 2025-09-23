@@ -1,0 +1,19 @@
+**/.git
+**/.gitignore
+**/.env
+**/.venv
+**/Dockerfile
+**/.dockerignore
+/* **/README.md */
+**/LICENSE
+**/node_modules
+**/dist
+**/build
+**/.vscode
+**/.devcontainer
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/venv
+.DS_Store

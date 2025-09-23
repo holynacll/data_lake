@@ -1,6 +1,5 @@
 import locale
-from math import ceil
-from datetime import datetime, timedelta
+from datetime import datetime
 import altair as alt
 
 import streamlit as st
@@ -8,7 +7,6 @@ import pandas as pd
 
 from app.database import SessionLocal
 from app.crud import get_items_by_date
-from app.config import settings
 
 # --- Configurações Iniciais e Constantes ---
 locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
@@ -19,7 +17,7 @@ AUTOMATIC_VALIDATION = "AUTOMATIC_VALIDATION"
 
 
 # Coloque esta função junto com as outras funções auxiliares
-@st.cache_data(ttl=1200)  # Cache de 20 minutos (1200 segundos)
+@st.cache_data(ttl=1200, show_spinner="Buscando dados...")  # Cache de 20 minutos (1200 segundos)
 def fetch_data_from_db(start_date, end_date, operation_types):
     """
     Função cacheada para buscar dados do banco de dados.
@@ -33,14 +31,13 @@ def fetch_data_from_db(start_date, end_date, operation_types):
         return [
             {
                 "Ticket Code": item.ticket_code,
-                "Status": "Sucesso" if item.success else "Falha",
                 "Num Cupom": item.num_cupom,
+                "Num Caixa": item.num_caixa,
                 "Num Ped ECF": item.num_ped_ecf,
                 "Valor Total": item.vl_total,
                 "Validação Manual": "Sim" if item.operation_type == MANUAL_VALIDATION else "Não",
+                "Status": "Sucesso" if item.success else "Falha",
                 "Criado em": item.created_at.strftime("%Y/%m/%d"),
-                # "operation_type": item.operation_type, # Adicionei para a conversão ser completa
-                # "success": item.success
             }
             for item in items
         ]
@@ -52,11 +49,11 @@ def load_data(data: list[dict]) -> pd.DataFrame:
     """Converte uma lista de dicionários em um DataFrame do Pandas."""
     return pd.DataFrame(data)
 
-def authenticate_api_key(api_key: str) -> bool:
-    """Valida a chave de API."""
-    if not settings.API_KEY:
-        raise ValueError("A chave de API não está configurada no ambiente.")
-    return api_key == settings.API_KEY
+# def authenticate_api_key(api_key: str) -> bool:
+#     """Valida a chave de API."""
+#     if not settings.API_KEY:
+#         raise ValueError("A chave de API não está configurada no ambiente.")
+#     return api_key == settings.API_KEY
 
 # --- Configuração da Página ---
 st.set_page_config(layout="wide", page_title="Análise de Descontos")
@@ -96,10 +93,6 @@ if not operation_types_to_fetch:
     st.warning("Selecione pelo menos um tipo de validação.")
     st.stop()
 
-# Use o context manager para a sessão do DB
-# with SessionLocal() as db:
-#     items = get_items_by_date(db, start_date, end_date, operation_types_to_fetch)
-
 data_list = fetch_data_from_db(start_date, end_date, operation_types_to_fetch)
 
 if not data_list:
@@ -112,8 +105,10 @@ else:
     st.subheader("Resumo Geral")
     
     # Prepara os dados para os KPIs
+    months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
     current_year = datetime.now().year
     current_month = datetime.now().month
+    current_month_name = months[current_month - 1]
 
     # Filtra o DataFrame para os cálculos
     sucesso_df = df[df['Status'] == 'Sucesso']
@@ -140,7 +135,7 @@ else:
     with col3:
         st.metric(label=f"Descontos Automáticos em {current_year}", value=validacao_automatica)
     with col4:
-        st.metric(label="Descontos no Mês Atual", value=desconto_mes_atual)
+        st.metric(label=f"Descontos em {current_month_name} de {current_year}", value=desconto_mes_atual)
 
     
     st.divider() # Adiciona uma linha divisória para separar os KPIs do resto do dashboard
@@ -174,41 +169,43 @@ else:
     st.altair_chart(chart, use_container_width=True)
 
 
-    # --- Gráficos de Pizza ---
-    st.subheader("Distribuição dos Descontos")
-    col1_pie, col2_pie = st.columns(2)
+    # --- Gráfico Unificado de Distribuição dos Descontos ---
+    # 1. Prepare os dados juntando as duas métricas
+    num_caixa_counts = df['Num Caixa'].value_counts().reset_index()
+    num_caixa_counts.columns = ['Num Caixa', 'Contagem']
 
-    with col1_pie:
-        validation_counts = df['Validação Manual'].value_counts().reset_index()
-        validation_counts.columns = ['Tipo de Validação', 'Contagem']
-        validation_counts['Tipo de Validação'] = validation_counts['Tipo de Validação'].map(
-            {'Sim': 'Manual', 'Não': 'Automática'}
-        )
+    valor_total_por_caixa = df.groupby('Num Caixa')['Valor Total'].sum().reset_index()
+    valor_total_por_caixa.columns = ['Num Caixa', 'Valor Total']
 
+    # Junte os dois dataframes
+    df_combinado = pd.merge(num_caixa_counts, valor_total_por_caixa, on='Num Caixa')
 
-        pie_chart_validation = alt.Chart(validation_counts).mark_arc(outerRadius=120).encode(
-            theta=alt.Theta("Contagem:Q", stack=True),
-            color=alt.Color("Tipo de Validação:N", title="Tipo de Validação"),
-            tooltip=["Tipo de Validação", "Contagem"]
-        ).properties(
-            title="Descontos por Tipo de Validação"
-        )
-        st.altair_chart(pie_chart_validation, use_container_width=True)
+    # 2. Crie o gráfico base e as camadas
+    base = alt.Chart(df_combinado).encode(
+        x=alt.X('Num Caixa:N', title='Número do Caixa', sort=None)
+    )
 
-    with col2_pie:
-        status_counts = df['Status'].value_counts().reset_index()
-        status_counts.columns = ['Status', 'Contagem']
+    # Camada de barras para a Contagem
+    barras = base.mark_bar().encode(
+        y=alt.Y('Contagem:Q', title='Quantidade de Descontos'),
+        tooltip=[alt.Tooltip('Num Caixa'), alt.Tooltip('Contagem')]
+    )
 
-        pie_chart_status = alt.Chart(status_counts).mark_arc(outerRadius=120).encode(
-            theta=alt.Theta("Contagem:Q", stack=True),
-            color=alt.Color("Status:N", scale=color_scale, title="Status"),
-            tooltip=["Status", "Contagem"]
-        ).properties(
-            title="Descontos por Status (Sucesso/Falha)"
-        )
-        st.altair_chart(pie_chart_status, use_container_width=True)
+    # Camada de linha para o Valor Total
+    linha = base.mark_line(color='red', point=True).encode(
+        y=alt.Y('Valor Total:Q', title='Valor Total Acumulado (R$)'),
+        tooltip=[alt.Tooltip('Num Caixa'), alt.Tooltip('Valor Total', format='.2f')]
+    )
 
-    
+    # 3. Junte as camadas e resolva os eixos Y
+    grafico_final = alt.layer(barras, linha).resolve_scale(
+        y='independent'
+    ).properties(
+        title="Quantidade vs. Valor Total de Descontos por Caixa"
+    )
+
+    st.altair_chart(grafico_final, use_container_width=True)
+
     # --- Tabela Analítica ---
     st.subheader("Tabela Analítica")
 
@@ -228,12 +225,3 @@ else:
             )
         }
     )
-
-    # --- Exportação para CSV ---
-    # csv = df.to_csv(index=False).encode("utf-8")
-    # st.download_button(
-    #     label="📥 Exportar para CSV",
-    #     data=csv,
-    #     file_name=f"descontos_{start_date_input}_a_{end_date_input}.csv",
-    #     mime="text/csv",
-    # )

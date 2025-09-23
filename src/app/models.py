@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime
+from sqlalchemy import DateTime, Index
 from sqlalchemy import Integer, String, func, Boolean, Float
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,6 +14,7 @@ class ItemModel(Base):
     ticket_code: Mapped[str] = mapped_column(String(120))
     num_ped_ecf: Mapped[int] = mapped_column(Integer, nullable=True)
     num_cupom: Mapped[int] = mapped_column(Integer, nullable=True)
+    num_caixa: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
     vl_total: Mapped[float] = mapped_column(Float)
     operation_type: Mapped[str] = mapped_column(String(120))
     success: Mapped[bool] = mapped_column(Boolean)
@@ -23,6 +24,10 @@ class ItemModel(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
+    )
+
+    __table_args__ = (
+        Index('ix_items_created_at_operation_type', 'created_at', 'operation_type'),
     )
 
     def __repr__(self) -> str:

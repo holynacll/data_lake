@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:latest
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=dashboard
+
+  adminer:
+    image: adminer
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+
+  api:
+    image: total-atacado-api:latest
+    volumes:
+      - ./src/:/app/src/
+    command: >
+      sh -c "
+        . .venv/bin/activate &&
+        echo 'Aguardando Postgres...';
+        python scripts/wait_for_db.py &&
+        echo 'Postgres pronto. Iniciando FastAPI...';
+        fastapi run src/app/main.py --host 0.0.0.0 --port 8000
+      "
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+  
+  dashboard:
+    image: total-atacado-api:latest
+    volumes:
+      - ./src/:/app/src/
+    command: >
+      sh -c "
+        . .venv/bin/activate &&
+        echo 'Aguardando Postgres...';
+        python scripts/wait_for_db.py &&
+        echo 'Postgres pronto. Iniciando Streamlit...';
+        streamlit run src/app/dashboard.py --server.port 8501
+      "    
+    ports:
+      - "8501:8501"
+    depends_on:
+      - db
+
+volumes:
+  db_data:
