@@ -7,8 +7,7 @@ import streamlit as st
 import pandas as pd
 from app.database import SessionLocal
 from app.repository import (
-    get_paginated_items_by_date, 
-    count_items_by_date,
+    get_items_by_date, 
     get_kpi_data,
     get_daily_counts,
     get_caixa_distribution
@@ -23,7 +22,7 @@ except locale.Error:
 
 MANUAL_VALIDATION = "MANUAL_VALIDATION"
 AUTOMATIC_VALIDATION = "AUTOMATIC_VALIDATION"
-PAGE_SIZE = 100
+PAGE_SIZE = 1000000
 
 # --- Funções de Busca de Dados Cacheadas ---
 
@@ -46,19 +45,15 @@ def fetch_caixa_distribution_data(start_date, end_date, operation_types):
     with SessionLocal() as db:
         return get_caixa_distribution(db, start_date, end_date, types_tuple)
 
+
 @st.cache_data(ttl=1200, show_spinner="Buscando dados da tabela...")
-def fetch_paginated_table_data(start_date, end_date, operation_types, page, page_size, search_term, sort_by, sort_order):
+def fetch_table_data(start_date, end_date, operation_types):
     types_tuple = tuple(sorted(operation_types))
-    skip = (page - 1) * page_size
     with SessionLocal() as db:
-        items = get_paginated_items_by_date(
-            db, start_date, end_date, types_tuple, skip, page_size,
-            search_term, sort_by, sort_order
+        items = get_items_by_date(
+            db, start_date, end_date, types_tuple
         )
-        total_items = count_items_by_date(
-            db, start_date, end_date, types_tuple, search_term
-        )
-        
+
         df = pd.DataFrame(items, columns=[
             "Ticket Code", "Num Cupom", "Num Caixa", "Num Ped ECF", "Valor Total",
             "Validação Manual", "Status", "Criado em"
@@ -66,7 +61,8 @@ def fetch_paginated_table_data(start_date, end_date, operation_types, page, page
         df['Validação Manual'] = df['Validação Manual'].apply(lambda x: "Sim" if x == MANUAL_VALIDATION else "Não")
         df['Status'] = df['Status'].apply(lambda x: "Sucesso" if x else "Falha")
         
-        return df, total_items
+        return df
+
 
 # --- Início da Aplicação ---
 st.title("📊 Análise de Descontos")
@@ -142,7 +138,7 @@ with col_chart2:
         )
         linha = base.mark_line(color='red', point=True).encode(
             y=alt.Y('Valor Total:Q', title='Valor Acumulado (R$)'),
-            tooltip=[alt.Tooltip('Num Caixa'), alt.Tooltip('Valor Total', format='R$,.2f')]
+            tooltip=[alt.Tooltip('Num Caixa'), alt.Tooltip('Valor Total', format='.2f')]
         )
         grafico_final = alt.layer(barras, linha).resolve_scale(y='independent').properties(
             title="Quantidade vs. Valor por Caixa"
@@ -154,72 +150,14 @@ st.divider()
 # --- Tabela Analítica ---
 st.subheader("Tabela Analítica de Registros")
 
-# Inicializa o estado da sessão
-if 'page' not in st.session_state: st.session_state.page = 1
-if 'search' not in st.session_state: st.session_state.search = ""
-if 'sort_by' not in st.session_state: st.session_state.sort_by = "Criado em"
-if 'sort_order' not in st.session_state: st.session_state.sort_order = "Decrescente"
-
-# Controles de Busca e Ordenação
-col_search, col_sort_by, col_sort_order = st.columns([2, 1, 1])
-
-def on_change_search_sort():
-    st.session_state.page = 1
-    st.session_state.search = st.session_state.search_widget
-    st.session_state.sort_by = st.session_state.sort_by_widget
-    st.session_state.sort_order = st.session_state.sort_order_widget
-
-col_search.text_input(
-    "Buscar por Ticket, Cupom ou Caixa",
-    key="search_widget",
-    on_change=on_change_search_sort
-)
-col_sort_by.selectbox(
-    "Ordenar por",
-    options=["Criado em", "Valor Total", "Num Caixa", "Ticket Code"],
-    key="sort_by_widget",
-    on_change=on_change_search_sort
-)
-col_sort_order.selectbox(
-    "Ordem",
-    options=["Decrescente", "Crescente"],
-    key="sort_order_widget",
-    on_change=on_change_search_sort
-)
-
-sort_order_param = 'asc' if st.session_state.sort_order == "Crescente" else 'desc'
-
-df_table, total_items = fetch_paginated_table_data(
-    start_date, end_date, operation_types_to_fetch, 
-    st.session_state.page, PAGE_SIZE, 
-    st.session_state.search, 
-    st.session_state.sort_by, 
-    sort_order_param
-)
-
-total_pages = (total_items // PAGE_SIZE) + (1 if total_items % PAGE_SIZE > 0 else 0)
-if total_pages == 0: total_pages = 1
-
-st.write(f"Mostrando **{len(df_table)}** de **{total_items}** registros.")
+df_table = fetch_table_data(start_date, end_date, operation_types_to_fetch)
 
 st.dataframe(
     data=df_table,
     hide_index=True,
-    use_container_width=True,
+    width="stretch",
     column_config={
         "Valor Total": st.column_config.NumberColumn(format="R$ %.2f"),
         "Criado em": st.column_config.DatetimeColumn(format="DD/MM/YYYY HH:mm")
     }
 )
-
-# Controles de paginação
-col_nav1, col_nav2, _ = st.columns([1, 1, 4])
-if col_nav1.button("⬅️ Anterior", disabled=(st.session_state.page <= 1)):
-    st.session_state.page -= 1
-    st.rerun()
-
-if col_nav2.button("Próxima ➡️", disabled=(st.session_state.page >= total_pages)):
-    st.session_state.page += 1
-    st.rerun()
-
-st.caption(f"Página {st.session_state.page} de {total_pages}")

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from sqlalchemy import func, or_, String
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, Query
 import pandas as pd
 from app import models
 
@@ -20,7 +20,7 @@ COLUMN_MAP = {
 
 
 def _apply_filters_and_sorting(
-    query,
+    query: Query,
     start_date: datetime, 
     end_date: datetime, 
     operation_types: tuple[str, ...],
@@ -61,16 +61,11 @@ def _apply_filters_and_sorting(
     return query
 
 
-def get_paginated_items_by_date(
+def get_items_by_date(
     db: Session, 
     start_date: datetime, 
     end_date: datetime, 
     operation_types: tuple[str, ...],
-    skip: int = 0,
-    limit: int = 100,
-    search_term: str | None = None,
-    sort_by: str | None = None,
-    sort_order: str = 'desc'
 ):
     """Busca itens de forma paginada, com busca e ordenação."""
     base_query = db.query(
@@ -86,10 +81,9 @@ def get_paginated_items_by_date(
     
     query = _apply_filters_and_sorting(
         base_query, start_date, end_date, operation_types,
-        search_term, sort_by, sort_order, apply_sorting=True # Explicitly apply sorting here
     )
     
-    return query.offset(skip).limit(limit).all()
+    return query.all()
 
 
 def count_items_by_date(
