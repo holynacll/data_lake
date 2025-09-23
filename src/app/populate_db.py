@@ -15,7 +15,7 @@ for _ in range(1000000):
     num_caixa_interval = fake.random_int(min=1, max=32)
     item = {
         "ticket_code": fake.uuid4(),
-        "num_ped_ecf": fake.random_int(),
+        "num_ped_ecf": str(fake.random_int()),
         "num_cupom": fake.random_int(),
         "num_caixa": num_caixa_interval,
         "vl_total": fake.random_int(),
