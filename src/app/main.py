@@ -48,3 +48,8 @@ def read_item(item_id: int, db: Session = Depends(get_db)):
     if db_item is None:
         raise HTTPException(status_code=404, detail="Item not found")
     return db_item
+
+
+@app.get("/health", status_code=200)
+async def health_check():
+    return {"status": "ok"}
