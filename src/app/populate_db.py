@@ -10,16 +10,19 @@ models.Base.metadata.create_all(bind=engine)
 fake = Faker()
 
 items = []
-for _ in range(1000000):
+for _ in range(100000):
     date_interval = fake.random_int(min=1, max=30)
     num_caixa_interval = fake.random_int(min=1, max=32)
+    hostname = str(fake.random_int(min=1, max=32)).zfill(4)
+    operation_type = fake.random_element(elements=("MANUAL_VALIDATION", "AUTOMATIC_VALIDATION"))
     item = {
         "ticket_code": fake.uuid4(),
         "num_ped_ecf": str(fake.random_int()),
         "num_cupom": fake.random_int(),
-        "num_caixa": num_caixa_interval,
+        "num_caixa": num_caixa_interval if operation_type == "AUTOMATIC_VALIDATION" else None,
+        "hostname": hostname,
         "vl_total": fake.random_int(),
-        "operation_type": fake.random_element(elements=("MANUAL_VALIDATION", "AUTOMATIC_VALIDATION")),
+        "operation_type": operation_type,
         "success": fake.boolean(chance_of_getting_true=95),
         "message": fake.sentence(),
         "created_at": datetime.now() - timedelta(days=date_interval),

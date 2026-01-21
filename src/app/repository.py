@@ -13,6 +13,7 @@ COLUMN_MAP = {
     "Ticket Code": models.ItemModel.ticket_code,
     "Num Cupom": models.ItemModel.num_cupom,
     "Num Caixa": models.ItemModel.num_caixa,
+    "Hostname": models.ItemModel.hostname,
     "Num Ped ECF": models.ItemModel.num_ped_ecf,
     "Valor Total": models.ItemModel.vl_total,
     "Criado em": models.ItemModel.created_at,
@@ -72,6 +73,7 @@ def get_items_by_date(
         models.ItemModel.ticket_code,
         models.ItemModel.num_cupom,
         models.ItemModel.num_caixa,
+        models.ItemModel.hostname,
         models.ItemModel.num_ped_ecf,
         models.ItemModel.vl_total,
         models.ItemModel.operation_type,
@@ -167,10 +169,11 @@ def get_daily_counts(db: Session, start_date: datetime, end_date: datetime, oper
     ]
     
     
-def get_caixa_distribution(db: Session, start_date: datetime, end_date: datetime, operation_types: tuple[str, ...]):
-    """Retorna a contagem e a soma do valor total por caixa."""
+def get_hostname_caixa_distribution(db: Session, start_date: datetime, end_date: datetime, operation_types: tuple[str, ...]):
+    """Retorna a contagem e a soma do valor total por junção de hostname e num_caixa."""
     result = (
         db.query(
+            models.ItemModel.hostname,
             models.ItemModel.num_caixa,
             func.count(models.ItemModel.id).label('contagem'),
             func.sum(models.ItemModel.vl_total).label('valor_total')
@@ -179,8 +182,8 @@ def get_caixa_distribution(db: Session, start_date: datetime, end_date: datetime
             models.ItemModel.created_at.between(start_date, end_date),
             models.ItemModel.operation_type.in_(operation_types)
         )
-        .group_by(models.ItemModel.num_caixa)
-        .order_by(models.ItemModel.num_caixa)
+        .group_by(models.ItemModel.hostname, models.ItemModel.num_caixa)
+        .order_by(models.ItemModel.hostname, models.ItemModel.num_caixa)
         .all()
     )
-    return pd.DataFrame(result, columns=['Num Caixa', 'Contagem', 'Valor Total'])
+    return pd.DataFrame(result, columns=['Hostname', 'Num Caixa', 'Contagem', 'Valor Total'])

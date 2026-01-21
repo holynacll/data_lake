@@ -10,6 +10,7 @@ class ItemBase(BaseModel):
     num_ped_ecf: int | None = None
     num_cupom: int | None =  None
     num_caixa: int | None = None
+    hostname: str | None = None
 
 
 class ItemCreate(ItemBase):

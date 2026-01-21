@@ -13,6 +13,7 @@ class ItemModel(Base):
     num_ped_ecf: Mapped[str] = mapped_column(String(60), nullable=True, index=True)  # Adicionado índice
     num_cupom: Mapped[int] = mapped_column(Integer, nullable=True, index=True)  # Adicionado índice
     num_caixa: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+    hostname: Mapped[str] = mapped_column(String(120), nullable=True, index=True)
     vl_total: Mapped[float] = mapped_column(Float, index=True)  # Adicionado índice para ordenações por valor
     operation_type: Mapped[str] = mapped_column(String(120), index=True)  # Já tinha índice
     success: Mapped[bool] = mapped_column(Boolean, index=True)  # Adicionado índice para filtros por status
@@ -32,6 +33,7 @@ class ItemModel(Base):
         # Índices compostos para queries do dashboard
         Index('ix_items_date_success_operation', 'created_at', 'success', 'operation_type'),
         Index('ix_items_caixa_date_operation', 'num_caixa', 'created_at', 'operation_type'),
+        Index('ix_items_hostname_date_operation', 'hostname', 'created_at', 'operation_type'),
         Index('ix_items_success_year_operation', 
               text('success, EXTRACT(year FROM created_at), operation_type')),
         Index('ix_items_success_year_month_operation', 
@@ -67,6 +69,7 @@ CREATE INDEX IF NOT EXISTS ix_items_success ON items(success);
 -- Índices compostos otimizados
 CREATE INDEX IF NOT EXISTS ix_items_date_success_operation ON items(created_at, success, operation_type);
 CREATE INDEX IF NOT EXISTS ix_items_caixa_date_operation ON items(num_caixa, created_at, operation_type);
+CREATE INDEX IF NOT EXISTS ix_items_hostname_date_operation ON items(hostname, created_at, operation_type);
 CREATE INDEX IF NOT EXISTS ix_items_success_year_operation ON items(success, EXTRACT(year FROM created_at), operation_type);
 CREATE INDEX IF NOT EXISTS ix_items_success_year_month_operation ON items(success, EXTRACT(year FROM created_at), EXTRACT(month FROM created_at), operation_type);
 CREATE INDEX IF NOT EXISTS ix_items_date_only ON items(DATE(created_at));
