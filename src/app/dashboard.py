@@ -128,11 +128,15 @@ if not count_df.empty:
 
 df_combinado = fetch_hostname_caixa_distribution_data(start_date, end_date, operation_types_to_fetch)
 if not df_combinado.empty:
-    df_combinado['Caixa'] = df_combinado['Hostname'] + " - " + df_combinado['Num Caixa'].astype(str)
+    df_combinado['Caixa'] = df_combinado['Hostname'].astype(str) + " - " + df_combinado['Num Caixa'].astype(str)
     base = alt.Chart(df_combinado).encode(x=alt.X('Caixa:N', title='Caixa (Hostname - Num Caixa)', sort=None))
     barras = base.mark_bar().encode(
         y=alt.Y('Contagem:Q', title='Quantidade de descontos'),
-        tooltip=[alt.Tooltip('Caixa'), alt.Tooltip('Contagem')]
+        tooltip=[
+            alt.Tooltip('Caixa'),
+            alt.Tooltip('Contagem', title='Quantidade de descontos'),
+            alt.Tooltip('Valor Total', format='.2f', title='Valor Total (R$)'),
+        ]
     )
     linha = base.mark_line(color='red', point=True).encode(
         y=alt.Y('Valor Total:Q', title='Valor Acumulado (R$)'),
