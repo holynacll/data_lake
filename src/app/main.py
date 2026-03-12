@@ -1,14 +1,14 @@
 from typing import List
-
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-
+from loguru import logger
 from app import crud, models, schemas
 from app.config import settings
 from app.database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
-
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -25,6 +25,28 @@ app = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    body = None
+    try:
+        body = await request.json()
+    except Exception:
+        body = await request.body()
+
+    logger.error(
+        f"422 Unprocessable Entity\n"
+        f"  URL:    {request.method} {request.url}\n"
+        f"  Body:   {body}\n"
+        f"  Errors: {exc.errors()}"
+    )
+
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": str(body)},
+    )
+
 
 @app.get("/")
 async def root():
