@@ -1,3 +1,4 @@
+# schemas.py
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
@@ -30,6 +31,14 @@ class ItemBase(BaseModel):
                 16: "AUTOMATIC_VALIDATION",
             }
             return mapping.get(v, "UNKNOWN")
+        return v
+
+    @field_validator("message", mode="before")
+    @classmethod
+    def truncate_message(cls, v):
+        """Trunca a mensagem para 200 caracteres."""
+        if isinstance(v, str):
+            return v[:200]
         return v
 
 
