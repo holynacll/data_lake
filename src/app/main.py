@@ -1,14 +1,16 @@
 from typing import List
+import logging
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
-from loguru import logger
 from app import crud, models, schemas
 from app.config import settings
 from app.database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -36,10 +38,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         body = await request.body()
 
     logger.error(
-        f"422 Unprocessable Entity\n"
-        f"  URL:    {request.method} {request.url}\n"
-        f"  Body:   {body}\n"
-        f"  Errors: {exc.errors()}"
+        "422 Unprocessable Entity\n"
+        "  URL:    %s %s\n"
+        "  Body:   %s\n"
+        "  Errors: %s",
+        request.method, request.url, body, exc.errors()
     )
 
     return JSONResponse(
