@@ -7,7 +7,7 @@ class ItemBase(BaseModel):
     operation_type: str
     success: bool
     message: str
-    num_ped_ecf: str | None = None   # ← era int, corrigido para str
+    num_ped_ecf: str | None = None
     num_cupom: int | None = None
     num_caixa: int | None = None
     hostname: str | None = None
@@ -18,6 +18,18 @@ class ItemBase(BaseModel):
         """Aceita int de clientes antigos e converte para str."""
         if isinstance(v, int):
             return str(v)
+        return v
+
+    @field_validator("operation_type", mode="before")
+    @classmethod
+    def coerce_operation_type(cls, v):
+        """Aceita int de clientes antigos e converte para str."""
+        if isinstance(v, int):
+            mapping = {
+                15: "MANUAL_VALIDATION",
+                16: "AUTOMATIC_VALIDATION",
+            }
+            return mapping.get(v, "UNKNOWN")
         return v
 
 
