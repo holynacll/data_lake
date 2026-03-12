@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class ItemBase(BaseModel):
@@ -7,10 +7,18 @@ class ItemBase(BaseModel):
     operation_type: str
     success: bool
     message: str
-    num_ped_ecf: int | None = None
-    num_cupom: int | None =  None
+    num_ped_ecf: str | None = None   # ← era int, corrigido para str
+    num_cupom: int | None = None
     num_caixa: int | None = None
     hostname: str | None = None
+
+    @field_validator("num_ped_ecf", mode="before")
+    @classmethod
+    def coerce_num_ped_ecf(cls, v):
+        """Aceita int de clientes antigos e converte para str."""
+        if isinstance(v, int):
+            return str(v)
+        return v
 
 
 class ItemCreate(ItemBase):
@@ -19,5 +27,4 @@ class ItemCreate(ItemBase):
 
 class Item(ItemBase):
     id: int
-
     model_config = ConfigDict(from_attributes=True)
